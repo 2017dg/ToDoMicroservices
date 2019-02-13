@@ -2,8 +2,10 @@ package com.quicktutorials.learnmicroservices.ToDoMicroservices.controllers;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Date;
+import java.util.Map;
 import java.util.Optional;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
 
@@ -11,21 +13,28 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import com.quicktutorials.learnmicroservices.ToDoMicroservices.entities.ToDo;
 import com.quicktutorials.learnmicroservices.ToDoMicroservices.entities.User;
 import com.quicktutorials.learnmicroservices.ToDoMicroservices.services.LoginService;
+import com.quicktutorials.learnmicroservices.ToDoMicroservices.services.ToDoService;
 import com.quicktutorials.learnmicroservices.ToDoMicroservices.utilities.JsonResponseBody;
 import com.quicktutorials.learnmicroservices.ToDoMicroservices.utilities.ToDoValidator;
 import com.quicktutorials.learnmicroservices.ToDoMicroservices.utilities.UserNotInDatabaseException;
+import com.quicktutorials.learnmicroservices.ToDoMicroservices.utilities.UserNotLoggedException;
+
+import io.jsonwebtoken.ExpiredJwtException;
 
 @org.springframework.web.bind.annotation.RestController
 public class RestController {
 
 	@Autowired
 	LoginService loginService;
+	@Autowired
+	ToDoService toDoService;
 	@RequestMapping("/hello")
 	public String sayHello() {
 		return "hello controller"; // "hello"-> hello.jsp is searched by ViewResolver if u don't put @ResponseBody
@@ -99,5 +108,62 @@ public class RestController {
         }
     }
 	
+	@RequestMapping("/showToDos")
+    public ResponseEntity<JsonResponseBody> showToDos(HttpServletRequest request){
+
+        //1) success: arraylist of ToDos in the "response" attribute of the JsonResponseBody
+        //2) fai: error message
+        try {
+            Map<String, Object> userData = loginService.verifyJwtAndGetData(request);
+            return ResponseEntity.status(HttpStatus.OK).body(new JsonResponseBody(HttpStatus.OK.value(), toDoService.getToDos((String) userData.get("email"))));
+        }catch(UnsupportedEncodingException e1){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JsonResponseBody(HttpStatus.BAD_REQUEST.value(), "Bad Request: " + e1.toString()));
+        }catch(UserNotLoggedException e2){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new JsonResponseBody(HttpStatus.FORBIDDEN.value(), "Forbidden: " + e2.toString()));
+        }catch(ExpiredJwtException e3){
+            return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(new JsonResponseBody(HttpStatus.GATEWAY_TIMEOUT.value(), "Session Expired: " + e3.toString()));
+        }
+    }
 	
+	@RequestMapping(value="/newToDo", method=POST)
+    public ResponseEntity<JsonResponseBody> newToDo(HttpServletRequest request, @Valid ToDo toDo, BindingResult result){
+        //1) success: todoInserted into the response attribute of the JsonResponseBody
+        //2) fail: error message
+
+        ToDoValidator validator = new ToDoValidator();
+        validator.validate(toDo, result);
+
+        if(result.hasErrors()){
+            return  ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JsonResponseBody(HttpStatus.BAD_REQUEST.value(), "Data not valid: " + result.toString()));
+        }
+
+        try {
+            loginService.verifyJwtAndGetData(request);
+            return ResponseEntity.status(HttpStatus.OK).body(new JsonResponseBody(HttpStatus.OK.value(), toDoService.addToDo(toDo)));
+        }catch(UnsupportedEncodingException e1){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JsonResponseBody(HttpStatus.BAD_REQUEST.value(), "Bad Request: " + e1.toString()));
+        }catch(UserNotLoggedException e2){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new JsonResponseBody(HttpStatus.FORBIDDEN.value(), "Forbidden: " + e2.toString()));
+        }catch(ExpiredJwtException e3){
+            return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(new JsonResponseBody(HttpStatus.GATEWAY_TIMEOUT.value(), "Session Expired: " + e3.toString()));
+        }
+    }
+	
+	@RequestMapping("/deleteToDo/{id}")
+    public ResponseEntity<JsonResponseBody> deleteToDo(HttpServletRequest request, @PathVariable(name="id") Integer toDoId){
+
+        // 1) success> message of success
+        // 2) fail: error message
+        try{
+            loginService.verifyJwtAndGetData(request);
+            toDoService.deleteToDo(toDoId);
+            return ResponseEntity.status(HttpStatus.OK).body(new JsonResponseBody(HttpStatus.OK.value(), "ToDo correctly delete"));
+        }catch(UnsupportedEncodingException e1){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JsonResponseBody(HttpStatus.BAD_REQUEST.value(), "Bad Request: " + e1.toString()));
+        }catch(UserNotLoggedException e2){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new JsonResponseBody(HttpStatus.FORBIDDEN.value(), "Forbidden: " + e2.toString()));
+        }catch(ExpiredJwtException e3){
+            return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(new JsonResponseBody(HttpStatus.GATEWAY_TIMEOUT.value(), "Session Expired: " + e3.toString()));
+        }
+    }
 }

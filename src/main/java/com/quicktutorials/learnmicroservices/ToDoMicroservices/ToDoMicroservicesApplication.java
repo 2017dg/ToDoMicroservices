@@ -48,9 +48,11 @@ public class ToDoMicroservicesApplication implements CommandLineRunner{
    encryptedPwd = encryptUtils.encrypt("anku");
    userDao.save(new User("anku@hotmail.com", "anku", encryptedPwd));
   // toDoDao.save(new ToDo());
-   toDoDao.save( new ToDo(1, "Learn Microservice", new Date(), "high", "quicktutorialz.com"));
-   toDoDao.save( new ToDo(2, "Learn Spring Boot", new Date(), "low", "quicktutorialz.com"));
-   toDoDao.save( new ToDo(null, "Learn java", null, "low", "quicktutorialz.com"));
+   toDoDao.save( new ToDo(1, "Learn Microservice", new Date(), "high", "sandeshpandit@hotmail.com"));
+   toDoDao.save( new ToDo(null, "Learn Microservice", new Date(), "low", "sandeshpandit@hotmail.com"));
+
+   toDoDao.save( new ToDo(3, "Learn Spring Boot", new Date(), "high", "sandy@hotmail.com"));
+   toDoDao.save( new ToDo(null, "Learn java", null, "low", "sandy@hotmail.com"));
 
    
     log.info("we have finished filling databaseS");
