@@ -11,4 +11,6 @@ public interface ToDoDao extends JpaRepository<ToDo, Integer>{
 	//name strategy
 	List<ToDo> findByFkUser(String email);
 
+	void delete(Integer id);
+
 }
